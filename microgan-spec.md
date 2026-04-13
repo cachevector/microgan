@@ -120,7 +120,7 @@ This is critical for reliability on bare-metal targets and is not provided by an
 
 Every deployed MicroGAN chip exposes a simple, documented interface:
 
-- **On PC (validation):** `tinygen --seed 42 --class icons` produces a PNG to compare against hardware output.
+- **On PC (validation):** `microgan --seed 42 --class icons` produces a PNG to compare against hardware output.
 - **On hardware:** A single function call `MicroGAN_generate(uint8_t seed, uint8_t class_id, uint8_t* output_buffer)` fills a 32×32 pixel buffer.
 - **Over UART/USB:** The firmware accepts a seed byte over serial and immediately DMA-transfers the resulting image buffer to the host for capture or display.
 
@@ -133,10 +133,10 @@ A unique feature: the firmware can generate a smooth visual animation by interpo
 ### 4.6 One-Command Pipeline
 
 ```bash
-tinygen train --data ./my_icons --target esp32 --output ./build
+microgan train --data ./my_icons --target esp32 --output ./build
 ```
 
-This single command runs training, compression, conversion, C code generation, and optionally flashing, with sensible defaults for every step. The pipeline is fully resumable (each stage checkpoints its outputs) and reproducible (a `tinygen.lock` file records all hyperparameters, random seeds, and tool versions used).
+This single command runs training, compression, conversion, C code generation, and optionally flashing, with sensible defaults for every step. The pipeline is fully resumable (each stage checkpoints its outputs) and reproducible (a `microgan.lock` file records all hyperparameters, random seeds, and tool versions used).
 
 ### 4.7 Visual Quality Preview Before Flash
 
@@ -170,7 +170,7 @@ The user approves quality before flashing, preventing "looks fine on PC, garbage
 │  └─────────────────────────────┘              │             │
 │                                               │             │
 │  ┌─────────────────────────────────────────────▼──────────┐ │
-│  │              CLI (tinygen)                              │ │
+│  │              CLI (microgan)                              │ │
 │  │  train | compress | convert | preview | flash | bench  │ │
 │  └─────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────┬─────────────────────────┘
@@ -260,7 +260,7 @@ When class labels are provided (e.g., 5 icon categories), the generator and disc
 - Discriminator: label embedding is projected and added to feature maps after the first conv layer.
 - On-device: The `class_id` argument to `MicroGAN_generate()` selects from a lookup table of pre-computed class embedding vectors stored in flash.
 
-#### Training Configuration File (`tinygen.yaml`)
+#### Training Configuration File (`microgan.yaml`)
 
 ```yaml
 training:
@@ -495,13 +495,13 @@ build/firmware/
 
 ```bash
 # PlatformIO (recommended)
-tinygen flash --target esp32 --port /dev/ttyUSB0
+microgan flash --target esp32 --port /dev/ttyUSB0
 
 # Arduino CLI
-tinygen flash --framework arduino --target rp2040 --port /dev/ttyACM0
+microgan flash --framework arduino --target rp2040 --port /dev/ttyACM0
 
 # OpenOCD (STM32)
-tinygen flash --framework openocd --target stm32f4 --port /dev/stlink
+microgan flash --framework openocd --target stm32f4 --port /dev/stlink
 ```
 
 #### Hardware-in-the-Loop (HIL) Validation
@@ -509,7 +509,7 @@ tinygen flash --framework openocd --target stm32f4 --port /dev/stlink
 After flashing, MicroGAN validates the deployment:
 
 ```bash
-tinygen validate --port /dev/ttyUSB0 --seeds 0,1,2,42,100
+microgan validate --port /dev/ttyUSB0 --seeds 0,1,2,42,100
 ```
 
 The tool sends each seed to the device over UART, receives the 3072-byte output buffer, and compares it to the PC-computed reference using MSE. Pass threshold: MSE < 5.0 per pixel (accounting for minor fixed-point rounding differences).
@@ -676,8 +676,8 @@ SRAM Map (520 KB total):
 MicroGAN/
 ├── README.md
 ├── spec.md                          ← This file
-├── pyproject.toml                   ← Python package (tinygen CLI + training)
-├── tinygen/                         ← Python package
+├── pyproject.toml                   ← Python package (microgan CLI + training)
+├── microgan/                         ← Python package
 │   ├── __init__.py
 │   ├── cli.py                       ← Click-based CLI entry point
 │   ├── train/
@@ -769,42 +769,42 @@ MicroGAN/
 
 ```bash
 # Full pipeline in one command
-tinygen train --config tinygen.yaml
+microgan train --config microgan.yaml
 
 # Individual stages
-tinygen train   --data ./dataset --target esp32 --epochs 200 --output ./build
-tinygen compress --checkpoint ./build/checkpoints/best.pt --target esp32
-tinygen convert  --tflite ./build/compressed/generator.tflite --target esp32
-tinygen flash    --build-dir ./build/firmware --port /dev/ttyUSB0
-tinygen validate --port /dev/ttyUSB0 --seeds 0,1,42
+microgan train   --data ./dataset --target esp32 --epochs 200 --output ./build
+microgan compress --checkpoint ./build/checkpoints/best.pt --target esp32
+microgan convert  --tflite ./build/compressed/generator.tflite --target esp32
+microgan flash    --build-dir ./build/firmware --port /dev/ttyUSB0
+microgan validate --port /dev/ttyUSB0 --seeds 0,1,42
 
 # Preview without hardware
-tinygen preview  --checkpoint ./build/final/generator.pt --seeds 0,1,2,3,4,5,6,7
+microgan preview  --checkpoint ./build/final/generator.pt --seeds 0,1,2,3,4,5,6,7
 
 # Benchmark (runs on PC using the C reference backend via ctypes)
-tinygen bench --weights ./build/firmware/include/MicroGAN_weights.h
+microgan bench --weights ./build/firmware/include/MicroGAN_weights.h
 
 # Use a model zoo entry
-tinygen flash --zoo icons-rgb --target esp32 --port /dev/ttyUSB0
+microgan flash --zoo icons-rgb --target esp32 --port /dev/ttyUSB0
 
 # GUI
-tinygen studio
+microgan studio
 ```
 
 ### Python Library API
 
 ```python
-from tinygen import MicroGAN
+from microgan import MicroGAN
 
 # Training
-gan = MicroGAN(config="tinygen.yaml")
+gan = MicroGAN(config="microgan.yaml")
 gan.train(data_dir="./my_icons")
 gan.compress()
 gan.convert()
 gan.flash(port="/dev/ttyUSB0")
 
 # Direct inference (PC, for testing)
-from tinygen.validate import PCReference
+from microgan.validate import PCReference
 ref = PCReference("./build/compressed/generator_int8.pt")
 image = ref.generate(seed=42, class_id=0)   # Returns numpy array (32, 32, 3)
 image_pil = ref.to_pil(image)
@@ -849,7 +849,7 @@ MicroGAN ships download scripts for:
 ### Integration Tests
 
 - `test_full_pipeline_esp32_sim`: Runs the complete pipeline (train 5 epochs, compress, convert, validate) against the ESP32 QEMU emulator.
-- `test_cli_all_targets`: Runs `tinygen convert` for all 5 hardware profiles and confirms output is valid C.
+- `test_cli_all_targets`: Runs `microgan convert` for all 5 hardware profiles and confirms output is valid C.
 
 ### Hardware-in-the-Loop Tests (Manual / CI with hardware)
 
@@ -908,7 +908,7 @@ These targets allow latent animation at 5–30 fps depending on hardware.
 
 ### Reproducibility
 
-Every MicroGAN training run produces a `tinygen.lock` file:
+Every MicroGAN training run produces a `microgan.lock` file:
 
 ```json
 {
@@ -980,7 +980,7 @@ The deployed firmware has zero network dependencies. No telemetry, no OTA update
 - [ ] MiniStyleGAN support
 - [ ] RP2040 and STM32 targets validated
 - [ ] Model zoo (3 prebuilt models)
-- [ ] `tinygen preview` command
+- [ ] `microgan preview` command
 
 ### Phase 4 — Polish & Launch (Weeks 13–16)
 

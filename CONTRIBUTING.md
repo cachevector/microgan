@@ -12,7 +12,7 @@ This document details the project structure and technical stack for those who wa
 
 ## Project Structure
 
-*   tinygen/: The main Python CLI and library.
+*   microgan/: The main Python CLI and library.
     *   train/: GAN architectures (DCGAN, StyleGAN) and training logic.
     *   compress/: Model quantization and pruning tools.
     *   convert/: ONNX, TFLite, and C header export utilities.

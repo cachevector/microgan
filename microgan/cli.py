@@ -15,7 +15,7 @@ def main():
 def train(data, epochs, latent_dim, channels, output_dir):
     """Train a MicroGAN generator."""
     import torch
-    from tinygen.train.trainer import MicroGANTrainer, create_dummy_dataset
+    from microgan.train.trainer import MicroGANTrainer, create_dummy_dataset
     
     click.echo(f"Training MicroGAN (Latent Dim: {latent_dim}, Channels: {channels}) for {epochs} epochs...")
     
@@ -44,7 +44,7 @@ def train(data, epochs, latent_dim, channels, output_dir):
 def export_onnx(checkpoint, latent_dim, channels, output_dir):
     """Export PyTorch model to ONNX (PyTorch Only)."""
     import torch
-    from tinygen.train.dcgan import MicroDCGANGenerator
+    from microgan.train.dcgan import MicroDCGANGenerator
     
     os.makedirs(output_dir, exist_ok=True)
     onnx_path = os.path.join(output_dir, "generator.onnx")
@@ -63,7 +63,7 @@ def export_onnx(checkpoint, latent_dim, channels, output_dir):
 @click.option("--output-dir", default="build", help="Directory to save artifacts.")
 def onnx_to_tflite(onnx_path, output_dir):
     """Convert ONNX to TFLite (Isolated Process)."""
-    from tinygen.convert.to_tflite import onnx_to_tflite as convert_fn
+    from microgan.convert.to_tflite import onnx_to_tflite as convert_fn
     
     os.makedirs(output_dir, exist_ok=True)
     tflite_path = os.path.join(output_dir, "generator_quantized.tflite")
@@ -77,7 +77,7 @@ def onnx_to_tflite(onnx_path, output_dir):
 @click.option("--output-dir", default="build", help="Directory to save artifacts.")
 def convert(tflite, output_dir):
     """Convert TFLite model to C header file (TensorFlow Only)."""
-    from tinygen.convert.to_c_array import tflite_to_c_array
+    from microgan.convert.to_c_array import tflite_to_c_array
     
     click.echo(f"Converting {tflite} to C header...")
     header_path = os.path.join(output_dir, "MicroGAN_weights.h")

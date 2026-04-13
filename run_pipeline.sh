@@ -20,19 +20,19 @@ export TF_ENABLE_ONEDNN_OPTS=0
 source venv_compat/bin/activate
 
 echo "--- Phase 1: Training (PyTorch) ---"
-tinygen train --epochs 1 --output-dir build_vertical
+microgan train --epochs 1 --output-dir build_vertical
 
 echo "--- Phase 2a: Export to ONNX (PyTorch) ---"
-tinygen export-onnx --checkpoint build_vertical/generator_final.pt --output-dir build_vertical
+microgan export-onnx --checkpoint build_vertical/generator_final.pt --output-dir build_vertical
 
 echo "--- Phase 2b: Convert ONNX to TFLite (TensorFlow) ---"
 # We run this in its own subshell to be extra safe
 (
   export OMP_NUM_THREADS=1
-  tinygen onnx-to-tflite --onnx-path build_vertical/generator.onnx --output-dir build_vertical
+  microgan onnx-to-tflite --onnx-path build_vertical/generator.onnx --output-dir build_vertical
 )
 
 echo "--- Phase 3: Header Conversion (TensorFlow) ---"
-tinygen convert --tflite build_vertical/generator_quantized.tflite --output-dir build_vertical
+microgan convert --tflite build_vertical/generator_quantized.tflite --output-dir build_vertical
 
 echo "--- Pipeline Complete ---"

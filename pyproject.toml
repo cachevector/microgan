@@ -1,7 +1,7 @@
 [project]
-name = "tinygen"
+name = "microgan"
 version = "0.1.0"
-description = "MicroGAN: Generative AI for Microcontrollers"
+description = "Train and deploy tiny GANs on microcontrollers"
 dependencies = [
     "torch",
     "torchvision",
@@ -16,10 +16,10 @@ dependencies = [
 ]
 
 [project.scripts]
-tinygen = "tinygen.cli:main"
+microgan = "microgan.cli:main"
 
 [tool.setuptools]
-packages = ["tinygen"]
+packages = ["microgan"]
 
 [build-system]
 requires = ["setuptools", "wheel"]

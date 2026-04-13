@@ -22,7 +22,7 @@ The runtime includes an engine to interpolate between different random seeds in 
 Use the CLI to train a model on your own dataset or a sample dataset. 
 
 ```bash
-tinygen train --epochs 200 --latent-dim 32 --channels 1 --output-dir build
+microgan train --epochs 200 --latent-dim 32 --channels 1 --output-dir build
 ```
 
 This creates a PyTorch checkpoint in the build directory. If you do not provide a dataset path, it will generate a dummy dataset for testing the pipeline.
@@ -32,17 +32,17 @@ To deploy on a microcontroller, the model must be converted to ONNX and then to 
 
 ```bash
 # Export to ONNX
-tinygen export-onnx --checkpoint build/generator_final.pt --output-dir build
+microgan export-onnx --checkpoint build/generator_final.pt --output-dir build
 
 # Convert to TFLite
-tinygen onnx-to-tflite --onnx-path build/generator.onnx --output-dir build
+microgan onnx-to-tflite --onnx-path build/generator.onnx --output-dir build
 ```
 
 ### 3. C Header Generation
 Finally, convert the TFLite model into a C header file containing the weights and quantization parameters.
 
 ```bash
-tinygen convert --tflite build/generator_quantized.tflite --output-dir build
+microgan convert --tflite build/generator_quantized.tflite --output-dir build
 ```
 
 This generates `MicroGAN_weights.h`. You can include this file in your embedded project.
