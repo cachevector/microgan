@@ -1,61 +1,85 @@
 # MicroGAN
 
-MicroGAN is an end to end pipeline for training compact generative adversarial networks on a laptop and deploying them fully on a microcontroller. It allows you to synthesize novel images on demand using a learned latent space, making your devices generative rather than merely retrieval based. 
+Train and deploy tiny GANs on microcontrollers.
 
-## Features
+MicroGAN trains a compact generative adversarial network on your laptop and exports it as a single C header file you can drop into any embedded project. Your microcontroller generates novel images on-device from a learned distribution — no cloud, no network, no runtime allocations.
 
-### Hardware Budget Aware Training
-The trainer automatically caps the number of generator parameters based on your target device's SRAM and flash budget. It estimates the post quantization size before training starts to ensure the model will actually fit on the chip.
+## Quickstart
 
-### GAN Aware Quantization
-Most TinyML tools focus on classifiers. MicroGAN uses quantization aware training (QAT) and layer sensitivity analysis specifically for generators. This prevents the "mode collapse" that often happens when GANs are aggressively quantized to INT8.
-
-### Static Memory C Export
-The exported C runtime uses a fixed scratch buffer (arena) and static weight arrays in flash. There is zero heap usage, which is critical for reliability on bare metal targets like the RP2040 or STM32.
-
-### Latent Space Animation
-The runtime includes an engine to interpolate between different random seeds in the latent space. This produces smooth visual animations of images morphing into one another, calculated entirely on device with integer arithmetic.
-
-## Usage Guide
-
-### 1. Training
-Use the CLI to train a model on your own dataset or a sample dataset. 
+Run the entire pipeline end to end:
 
 ```bash
-microgan train --epochs 200 --latent-dim 32 --channels 1 --output-dir build
+./run_pipeline.sh
 ```
 
-This creates a PyTorch checkpoint in the build directory. If you do not provide a dataset path, it will generate a dummy dataset for testing the pipeline.
+This trains a generator, converts it through ONNX to quantized TFLite, and produces a C header with the weights baked in. Takes about 30 seconds.
 
-### 2. Compression and Conversion
-To deploy on a microcontroller, the model must be converted to ONNX and then to a quantized TFLite format.
+## Installation
 
 ```bash
-# Export to ONNX
-microgan export-onnx --checkpoint build/generator_final.pt --output-dir build
-
-# Convert to TFLite
-microgan onnx-to-tflite --onnx-path build/generator.onnx --output-dir build
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
 ```
 
-### 3. C Header Generation
-Finally, convert the TFLite model into a C header file containing the weights and quantization parameters.
+Requires Python 3.9+ with PyTorch, TensorFlow, and ONNX. All dependencies are handled by `pip install -e .`.
+
+## Usage
+
+### Train a Generator
 
 ```bash
-microgan convert --tflite build/generator_quantized.tflite --output-dir build
+microgan train \
+  --data ./my_dataset \
+  --epochs 200 \
+  --latent-dim 32 \
+  --channels 1 \
+  --output-dir build
 ```
 
-This generates `MicroGAN_weights.h`. You can include this file in your embedded project.
+Trains a DCGAN that learns to generate 32x32 images from your dataset. Omit `--data` to run with a built-in dummy dataset for testing the pipeline.
 
-### 4. Deployment
-The C runtime is located in the runtime directory. To use it, initialize the arena and call the generation function.
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--data` | None | Path to image dataset (omit for dummy data) |
+| `--epochs` | 10 | Training epochs |
+| `--latent-dim` | 32 | Size of the latent noise vector |
+| `--channels` | 1 | 1 for grayscale, 3 for RGB |
+| `--output-dir` | `build` | Output directory for all artifacts |
+
+### Export and Convert
+
+Once training is done, three commands take you from a PyTorch checkpoint to a C header:
+
+```bash
+# PyTorch -> ONNX
+microgan export-onnx \
+  --checkpoint build/generator_final.pt \
+  --output-dir build
+
+# ONNX -> quantized TFLite
+microgan onnx-to-tflite \
+  --onnx-path build/generator.onnx \
+  --output-dir build
+
+# TFLite -> C header with weights and quantization parameters
+microgan convert \
+  --tflite build/generator_quantized.tflite \
+  --output-dir build
+```
+
+The final output is `MicroGAN_weights.h`.
+
+### Deploy to Your Microcontroller
+
+Copy `MicroGAN_weights.h`, `MicroGAN_runtime.h`, and `MicroGAN_runtime.c` into your embedded project:
 
 ```c
 #include "MicroGAN_runtime.h"
 #include "MicroGAN_weights.h"
 
-uint8_t arena[1024 * 64]; // Static scratch space
-uint8_t output[32 * 32];  // Buffer for the generated image
+static uint8_t arena[1024 * 64];  // scratch space for activations
+static uint8_t output[32 * 32];   // 32x32 grayscale image buffer
 
 void setup() {
     MicroGAN_init(arena, sizeof(arena));
@@ -68,10 +92,15 @@ void loop() {
 }
 ```
 
+Different seeds produce different images from the learned distribution. The runtime uses zero heap allocation — all memory comes from the static arena you provide.
+
 ## Hardware Targets
 
-MicroGAN is designed for:
-* ESP32 and ESP32-S3
-* STM32F4 and STM32F7 (via CMSIS-NN)
-* Raspberry Pi Pico (RP2040)
-* Arduino Uno R4
+- ESP32 / ESP32-S3
+- STM32F4 / STM32F7 (via CMSIS-NN)
+- Raspberry Pi Pico (RP2040)
+- Arduino Uno R4
+
+## License
+
+See [LICENSE](LICENSE) for details.
