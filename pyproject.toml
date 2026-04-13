@@ -1,0 +1,26 @@
+[project]
+name = "tinygen"
+version = "0.1.0"
+description = "MicroGAN: Generative AI for Microcontrollers"
+dependencies = [
+    "torch",
+    "torchvision",
+    "click",
+    "numpy",
+    "onnx",
+    "onnx-tf",
+    "tensorflow",
+    "pyyaml",
+    "pillow",
+    "tqdm"
+]
+
+[project.scripts]
+tinygen = "tinygen.cli:main"
+
+[tool.setuptools]
+packages = ["tinygen"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
